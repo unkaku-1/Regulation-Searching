@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: regulation-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/regulation.db
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1:8b}
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-please-change}
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/app:/app/app
+    depends_on:
+      - chromadb
+    networks:
+      - regulation-network
+    restart: unless-stopped
+
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: regulation-chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    networks:
+      - regulation-network
+    restart: unless-stopped
+
+volumes:
+  chroma-data:
+    driver: local
+
+networks:
+  regulation-network:
+    driver: bridge
+
